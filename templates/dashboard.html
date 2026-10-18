@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · StudyAI{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="eyebrow">{{ today.strftime('%A, %d %B %Y') }}</p>
+    <h1>Hey, {{ g.user['username'] }} 👋</h1>
+  </div>
+</div>
+
+<!-- ── Token / Activity cards ─────────────────────────────── -->
+<div class="token-row">
+  <div class="token-card token-blue">
+    <div class="token-icon">📚</div>
+    <div class="token-body">
+      <span class="token-num">{{ subject_count }}</span>
+      <span class="token-label">Subjects</span>
+    </div>
+  </div>
+  <div class="token-card token-amber">
+    <div class="token-icon">📅</div>
+    <div class="token-body">
+      <span class="token-num">{{ upcoming_count }}</span>
+      <span class="token-label">Upcoming exams</span>
+    </div>
+  </div>
+  <div class="token-card token-coral">
+    <div class="token-icon">⚡</div>
+    <div class="token-body">
+      <span class="token-num">{{ weak_count }}</span>
+      <span class="token-label">Weak subjects</span>
+    </div>
+  </div>
+  <div class="token-card token-sage">
+    <div class="token-icon">📎</div>
+    <div class="token-body">
+      <span class="token-num">{{ notes_count }}</span>
+      <span class="token-label">Files uploaded</span>
+    </div>
+  </div>
+  <div class="token-card token-purple">
+    <div class="token-icon">🤖</div>
+    <div class="token-body">
+      <span class="token-num">{{ chat_count }}</span>
+      <span class="token-label">AI questions asked</span>
+    </div>
+  </div>
+  <div class="token-card token-green">
+    <div class="token-icon">💾</div>
+    <div class="token-body">
+      <span class="token-num">{{ used_storage }}</span>
+      <span class="token-label">Storage used</span>
+    </div>
+  </div>
+</div>
+
+{% if next_exam %}
+<div class="next-exam-banner">
+  <span class="banner-icon">🎯</span>
+  <div>
+    <strong>Next exam:</strong> {{ next_exam['name'] }}
+    <span class="banner-date">· {{ next_exam['exam_date'] }}</span>
+  </div>
+</div>
+{% endif %}
+
+<div class="dash-grid">
+  <!-- Today's plan -->
+  <section class="dash-card">
+    <div class="card-head">
+      <h2>Today's study plan</h2>
+      {% if todays_plan %}
+      <form method="post" action="{{ url_for('generate_timetable') }}">
+        <button class="btn-ghost-sm">Regenerate</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if subject_count == 0 %}
+    <div class="empty-state">
+      <div class="empty-icon">📖</div>
+      <p>No subjects yet. Add one to generate a plan.</p>
+      <a href="{{ url_for('subjects') }}" class="btn-primary">Add a subject</a>
+    </div>
+    {% elif not todays_plan %}
+    <div class="empty-state">
+      <div class="empty-icon">🗓️</div>
+      <p>No plan generated yet for today.</p>
+      <form method="post" action="{{ url_for('generate_timetable') }}">
+        <button class="btn-primary">Generate plan</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="plan-list">
+      {% for e in todays_plan %}
+      <div class="plan-row">
+        <div class="plan-bar" style="--p: {{ (e['priority_score'] / todays_plan[0]['priority_score']) }}"></div>
+        <div class="plan-body">
+          <span class="plan-name">{{ e['subject_name'] }}</span>
+          <span class="plan-meta">score {{ '%.1f'|format(e['priority_score']) }}</span>
+        </div>
+        <span class="plan-hours">{{ e['allocated_hours'] }}h</span>
+      </div>
+      {% endfor %}
+    </div>
+    <a href="{{ url_for('timetable') }}" class="link-sm">View full timetable →</a>
+    {% endif %}
+  </section>
+
+  <!-- Tomorrow's focus -->
+  <section class="dash-card">
+    <div class="card-head"><h2>Tomorrow's focus</h2></div>
+    {% if recommendations|length == 0 %}
+    <div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <p>Everything looks good — no urgent subjects flagged.</p>
+    </div>
+    {% else %}
+    <div class="reco-list">
+      {% for r in recommendations %}
+      <a href="{{ url_for('subject_detail', sid=r['subject_id']) }}" class="reco-row">
+        <span class="reco-rank">#{{ loop.index }}</span>
+        <div class="reco-body">
+          <span class="reco-name">{{ r['name'] }}</span>
+          <span class="reco-reason">{{ r['reason'] }}</span>
+        </div>
+        <span class="reco-pct">{{ r['completion_percent'] }}%</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Timetable · StudyAI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="eyebrow">{{ today.strftime('%A, %d %B %Y') }}</p><h1>Today's Timetable</h1></div>
+  <form method="post" action="{{ url_for('generate_timetable') }}">
+    <button type="submit" class="btn-primary">{{ 'Regenerate' if plan else 'Generate timetable' }}</button>
+  </form>
+</div>
+
+{% if not has_subjects %}
+<div class="empty-state">
+  <div class="empty-icon">📅</div>
+  <p>Add a subject first to generate a timetable.</p>
+  <a href="{{ url_for('subjects') }}" class="btn-primary">Add a subject</a>
+</div>
+{% elif not plan %}
+<div class="empty-state">
+  <div class="empty-icon">🗓️</div>
+  <p>No timetable yet for today. Click "Generate timetable" above.</p>
+</div>
+{% else %}
+<p class="hint" style="margin-bottom:20px">{{ daily_hours }}h available today, split by priority score.</p>
+<div class="timetable-list">
+  {% for e in plan %}
+  <div class="tt-row">
+    <div class="tt-hours">{{ e['allocated_hours'] }}h</div>
+    <div class="tt-bar" style="--p: {{ (e['priority_score'] / plan[0]['priority_score']) }}">
+      <span class="tt-name">{{ e['subject_name'] }}</span>
+      <span class="tt-score">score {{ '%.1f'|format(e['priority_score']) }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

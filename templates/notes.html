@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Notes · StudyAI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="eyebrow">Library</p><h1>Your Notes</h1></div>
+</div>
+
+<div class="storage-card">
+  <div class="storage-top">
+    <div>
+      <span class="storage-title">Storage</span>
+      <span class="storage-detail">{{ human_size(used_bytes) }} of {{ human_size(quota_bytes) }} used</span>
+    </div>
+    <span class="storage-pct {{ 'pct-warn' if used_pct>=70 }} {{ 'pct-crit' if used_pct>=90 }}">{{ used_pct }}%</span>
+  </div>
+  <div class="storage-track">
+    <div class="storage-fill {{ 'fill-warn' if used_pct>=70 }} {{ 'fill-crit' if used_pct>=90 }}" style="width:{{ used_pct }}%;min-width:2px"></div>
+  </div>
+  <p class="hint" style="margin-top:8px">{{ total_notes }} file{{ 's' if total_notes!=1 }} · 100 MB max per file · 1 GB total</p>
+</div>
+
+{% if grouped|length == 0 %}
+<div class="empty-state">
+  <div class="empty-icon">📂</div>
+  <p>No notes yet. Go into a subject and upload a file.</p>
+  <a href="{{ url_for('subjects') }}" class="btn-primary">Go to Subjects</a>
+</div>
+{% else %}
+{% for group in grouped %}
+<section class="section" style="margin-top:32px">
+  <div class="card-head">
+    <h2><a href="{{ url_for('subject_detail', sid=group['subject']['id']) }}" style="text-decoration:none;color:inherit">{{ group['subject']['name'] }}</a></h2>
+    <span class="hint">{{ group['notes']|length }} file{{ 's' if group['notes']|length!=1 }}</span>
+  </div>
+  <div class="notes-list">
+    {% for n in group['notes'] %}
+    {% set ext = '.'+n['original_name'].rsplit('.',1)[-1].lower() if '.' in n['original_name'] else '' %}
+    <div class="note-row">
+      <span class="type-badge">{{ type_label.get(ext,'File') }}</span>
+      <div class="note-body">
+        <a href="{{ url_for('download_note', nid=n['id']) }}" target="_blank" rel="noopener" class="note-link">{{ n['original_name'] }}</a>
+        <span class="note-meta">{{ human_size(n['file_size']) }} · {{ n['uploaded_at'][:10] }}</span>
+      </div>
+      <form method="post" action="{{ url_for('delete_note', nid=n['id']) }}"
+            data-name="{{ n['original_name'] }}"
+            onsubmit="return confirm('Delete '+this.dataset.name+'?')">
+        <button type="submit" class="icon-btn">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

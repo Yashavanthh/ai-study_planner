@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% block title %}{{ subject['name'] }} · StudyAI{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="eyebrow"><a href="{{ url_for('subjects') }}" class="back-link">← Subjects</a></p>
+    <h1>{{ subject['name'] }}</h1>
+    <div class="subject-chips">
+      <span class="chip chip-blue">Exam {{ subject['exam_date'] }}</span>
+      <span class="chip chip-grey">Difficulty {{ subject['difficulty'] }}/5</span>
+      {% if subject['is_weak'] %}<span class="chip chip-coral">Weak subject</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── Progress bar ───────────────────────────────────────── -->
+<div class="progress-block">
+  <div class="progress-header">
+    <span>Topic progress</span>
+    <span id="prog-label">{{ completed }}/{{ total }} topics ({{ completion_percent }}%)</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="prog-fill" style="width:{{ completion_percent }}%"></div>
+  </div>
+</div>
+
+<!-- ── Topics + Notes ────────────────────────────────────── -->
+<div class="two-col" style="margin-top:24px">
+
+  <!-- Topics -->
+  <div class="card">
+    <h2 class="card-title">Topics</h2>
+    <form method="post" style="margin-bottom:14px">
+      <div class="inline-add">
+        <input name="name" type="text" placeholder="e.g. Binary Trees" required>
+        <button type="submit" class="btn-primary">Add</button>
+      </div>
+    </form>
+    <div id="topics-wrap">
+    {% if topics|length == 0 %}
+      <div class="empty-state" id="topics-empty">
+        <div class="empty-icon">📝</div>
+        <p>No topics yet. Add chapters or units above.</p>
+      </div>
+    {% else %}
+      <div class="topic-list" id="topic-list">
+        {% for t in topics %}
+        <div class="topic-row" data-id="{{ t['id'] }}">
+          <label class="topic-check">
+            <input type="checkbox" class="topic-cb" data-id="{{ t['id'] }}" {{ 'checked' if t['is_completed'] }}>
+            <span class="checkmark"></span>
+            <span class="topic-name {{ 'done' if t['is_completed'] }}">{{ t['name'] }}</span>
+          </label>
+          <form method="post" action="{{ url_for('delete_topic', tid=t['id']) }}">
+            <button type="submit" class="icon-btn" title="Remove">✕</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    </div>
+
+    <!-- AI suggest -->
+    <div class="suggest-section">
+      <button id="suggest-btn" class="btn-ai">
+        <span class="ai-icon">✨</span> Suggest important topics
+      </button>
+      <div id="suggest-output"></div>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <h2 class="card-title">Notes</h2>
+    <form method="post" action="{{ url_for('upload_note', sid=subject['id']) }}"
+          enctype="multipart/form-data">
+      <div class="file-drop" id="file-drop">
+        <input type="file" id="note_file" name="note_file" required class="file-input"
+               accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png">
+        <div class="file-drop-inner">
+          <span class="file-drop-icon">📎</span>
+          <span id="file-name">Click to choose or drag a file here</span>
+          <span class="file-types">PDF · Word · PPT · Excel · TXT · Image · Max 100 MB</span>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary btn-block" style="margin-top:12px">Upload</button>
+    </form>
+
+    {% if notes|length == 0 %}
+    <div class="empty-state" style="margin-top:16px">
+      <div class="empty-icon">📂</div>
+      <p>No files yet for this subject.</p>
+    </div>
+    {% else %}
+    <div class="notes-list" style="margin-top:16px">
+      {% for n in notes %}
+      {% set ext = '.' + n['original_name'].rsplit('.',1)[-1].lower() if '.' in n['original_name'] else '' %}
+      <div class="note-row">
+        <span class="type-badge">{{ type_label.get(ext,'File') }}</span>
+        <div class="note-body">
+          <a href="{{ url_for('download_note', nid=n['id']) }}" target="_blank"
+             rel="noopener" class="note-link">{{ n['original_name'] }}</a>
+          <span class="note-meta">{{ human_size(n['file_size']) }} · {{ n['uploaded_at'][:10] }}</span>
+        </div>
+        <form method="post" action="{{ url_for('delete_note', nid=n['id']) }}"
+              data-name="{{ n['original_name'] }}"
+              onsubmit="return confirm('Delete '+this.dataset.name+'?')">
+          <button type="submit" class="icon-btn">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <a href="{{ url_for('notes_overview') }}" class="link-sm" style="display:block;margin-top:14px">All notes →</a>
+  </div>
+</div>
+
+<!-- ── AI Chatbot ─────────────────────────────────────────── -->
+<section class="chat-section">
+  <div class="chat-header">
+    <div class="chat-title">
+      <span class="chat-ai-dot"></span>
+      <h2>AI Study Assistant — {{ subject['name'] }}</h2>
+    </div>
+    <form method="post" action="{{ url_for('clear_chat', sid=subject['id']) }}"
+          onsubmit="return confirm('Clear all chat history?')">
+      <button type="submit" class="btn-ghost-sm">Clear chat</button>
+    </form>
+  </div>
+
+  <!-- Quick prompt cards -->
+  <div class="quick-prompts">
+    <button class="qp-card" data-prompt="Explain {{ subject['name'] }} in simple terms with examples.">
+      <span class="qp-icon">💡</span>
+      <span>Explain simply</span>
+    </button>
+    <button class="qp-card" data-prompt="What are the most important topics in {{ subject['name'] }} for my exam? I have {{ subject['difficulty'] }} difficulty level.">
+      <span class="qp-icon">🎯</span>
+      <span>What to focus on</span>
+    </button>
+    <button class="qp-card" data-prompt="Give me 5 practice questions for {{ subject['name'] }} that are likely to appear in exams.">
+      <span class="qp-icon">📋</span>
+      <span>Practice questions</span>
+    </button>
+    <button class="qp-card" data-prompt="Give me a quick summary of the key concepts in {{ subject['name'] }}.">
+      <span class="qp-icon">📄</span>
+      <span>Key summary</span>
+    </button>
+    <button class="qp-card" data-prompt="What are common mistakes students make in {{ subject['name'] }} exams and how to avoid them?">
+      <span class="qp-icon">⚠️</span>
+      <span>Common mistakes</span>
+    </button>
+    <button class="qp-card" data-prompt="Create a 30-minute study plan for {{ subject['name'] }} focusing on weak areas.">
+      <span class="qp-icon">⏱️</span>
+      <span>Study plan</span>
+    </button>
+  </div>
+
+  <!-- Chat window -->
+  <div class="chat-window" id="chat-window">
+    {% if chat_history|length == 0 %}
+    <div class="chat-welcome" id="chat-welcome">
+      <div class="chat-welcome-icon">🤖</div>
+      <h3>Hi! I'm your AI study assistant for <strong>{{ subject['name'] }}</strong>.</h3>
+      <p>Ask me anything — concept explanations, practice questions, summaries, or study tips. Use the quick cards above to get started fast.</p>
+    </div>
+    {% else %}
+    {% for msg in chat_history %}
+    <div class="chat-msg chat-{{ msg['role'] }}">
+      <div class="msg-avatar">{{ '🧑' if msg['role']=='user' else '🤖' }}</div>
+      <div class="msg-bubble">
+        <div class="msg-content">{{ msg['content'] | replace('\n','<br>') | safe }}</div>
+        <div class="msg-time">{{ msg['created_at'][11:16] }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    <div class="chat-typing" id="typing-indicator" style="display:none">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat input -->
+  <div class="chat-input-row">
+    <textarea id="chat-input" placeholder="Ask anything about {{ subject['name'] }}..."
+              rows="1"></textarea>
+    <button id="chat-send" class="btn-send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</section>
+
+<script>
+const SUBJECT_ID = {{ subject['id'] }};
+
+// ── Topic checkbox toggle ────────────────────────────────────────
+document.addEventListener("change", async e => {
+  if (!e.target.matches(".topic-cb")) return;
+  const cb = e.target, id = cb.dataset.id;
+  const nameEl = cb.closest(".topic-row").querySelector(".topic-name");
+  try {
+    const res  = await fetch(`/topics/${id}/toggle`, {method:"POST"});
+    const data = await res.json();
+    nameEl.classList.toggle("done", data.is_completed);
+    const total = document.querySelectorAll(".topic-cb").length;
+    const done  = document.querySelectorAll(".topic-cb:checked").length;
+    document.getElementById("prog-fill").style.width  = data.subject_completion_percent + "%";
+    document.getElementById("prog-label").textContent = `${done}/${total} topics (${data.subject_completion_percent}%)`;
+  } catch {
+    cb.checked = !cb.checked;
+    alert("Couldn't save. Check your connection.");
+  }
+});
+
+// ── Topic quick-add (from AI suggestions) ───────────────────────
+function appendTopic(id, name) {
+  document.getElementById("topics-empty")?.remove();
+  let list = document.getElementById("topic-list");
+  if (!list) {
+    list = document.createElement("div");
+    list.id = "topic-list"; list.className = "topic-list";
+    document.getElementById("topics-wrap").appendChild(list);
+  }
+  const row = document.createElement("div");
+  row.className = "topic-row"; row.dataset.id = id;
+  const label = document.createElement("label"); label.className = "topic-check";
+  const cb = document.createElement("input"); cb.type="checkbox"; cb.className="topic-cb"; cb.dataset.id=id;
+  const cm = document.createElement("span"); cm.className="checkmark";
+  const nm = document.createElement("span"); nm.className="topic-name"; nm.textContent=name;
+  label.append(cb, cm, nm);
+  const form = document.createElement("form"); form.method="post"; form.action=`/topics/${id}/delete`;
+  const btn  = document.createElement("button"); btn.type="submit"; btn.className="icon-btn"; btn.textContent="✕";
+  form.append(btn); row.append(label, form); list.append(row);
+}
+
+// ── AI topic suggestions ─────────────────────────────────────────
+document.getElementById("suggest-btn").addEventListener("click", async function() {
+  this.disabled = true; this.innerHTML = '<span class="ai-icon">⏳</span> Thinking…';
+  const out = document.getElementById("suggest-output");
+  out.innerHTML = '<div class="suggest-loading"><div class="spin"></div> Asking Gemini for important topics…</div>';
+  try {
+    const res  = await fetch(`/subjects/${SUBJECT_ID}/suggest-topics`, {method:"POST"});
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      out.innerHTML = `<div class="suggest-error">${data.error || "Something went wrong."}</div>`; return;
+    }
+    if (!data.topics?.length) {
+      out.innerHTML = `<div class="suggest-empty">No new suggestions — you may have already added the important ones.</div>`; return;
+    }
+    const list = document.createElement("div"); list.className = "suggest-list";
+    data.topics.forEach(name => {
+      const row = document.createElement("div"); row.className = "suggest-row";
+      const nm  = document.createElement("span"); nm.className = "suggest-name"; nm.textContent = name;
+      const btn = document.createElement("button"); btn.className = "btn-add-topic"; btn.textContent = "+ Add";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true; btn.textContent = "Adding…";
+        const r = await fetch(`/subjects/${SUBJECT_ID}/topics/quick-add`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
+        const d = await r.json();
+        appendTopic(d.topic_id, d.name);
+        const total = document.querySelectorAll(".topic-cb").length;
+        const done  = document.querySelectorAll(".topic-cb:checked").length;
+        document.getElementById("prog-fill").style.width  = d.completion_percent + "%";
+        document.getElementById("prog-label").textContent = `${done}/${total} topics (${d.completion_percent}%)`;
+        row.remove();
+      });
+      row.append(nm, btn); list.append(row);
+    });
+    out.innerHTML = ""; out.appendChild(list);
+  } catch { out.innerHTML = '<div class="suggest-error">Network error. Try again.</div>'; }
+  finally { this.disabled=false; this.innerHTML='<span class="ai-icon">✨</span> Suggest important topics'; }
+});
+
+// ── File drop zone ───────────────────────────────────────────────
+const fileInput = document.getElementById("note_file");
+const fileLabel = document.getElementById("file-name");
+const dropZone  = document.getElementById("file-drop");
+
+fileInput?.addEventListener("change", () => {
+  fileLabel.textContent = fileInput.files[0]?.name || "Click to choose or drag a file here";
+});
+dropZone?.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragging"); });
+dropZone?.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
+dropZone?.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("dragging");
+  if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; fileLabel.textContent = e.dataTransfer.files[0].name; }
+});
+
+// ── Chatbot ──────────────────────────────────────────────────────
+const chatWindow  = document.getElementById("chat-window");
+const chatInput   = document.getElementById("chat-input");
+const chatSend    = document.getElementById("chat-send");
+const typingEl    = document.getElementById("typing-indicator");
+
+function scrollChat() { chatWindow.scrollTop = chatWindow.scrollHeight; }
+scrollChat();
+
+function appendMsg(role, content) {
+  document.getElementById("chat-welcome")?.remove();
+  const div  = document.createElement("div");
+  div.className = `chat-msg chat-${role}`;
+  const now  = new Date().toTimeString().slice(0,5);
+  div.innerHTML = `
+    <div class="msg-avatar">${role==="user"?"🧑":"🤖"}</div>
+    <div class="msg-bubble">
+      <div class="msg-content">${content.replace(/\n/g,"<br>")}</div>
+      <div class="msg-time">${now}</div>
+    </div>`;
+  chatWindow.insertBefore(div, typingEl);
+  scrollChat();
+}
+
+async function sendMessage(text) {
+  if (!text.trim()) return;
+  chatInput.value = ""; chatInput.style.height = "auto";
+  appendMsg("user", text);
+  typingEl.style.display = "flex"; scrollChat();
+  chatSend.disabled = true;
+  try {
+    const res  = await fetch(`/subjects/${SUBJECT_ID}/chat`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message: text})
+    });
+    const data = await res.json();
+    if (data.error) appendMsg("assistant", `⚠️ ${data.error}`);
+    else            appendMsg("assistant", data.reply);
+  } catch { appendMsg("assistant", "⚠️ Network error. Please try again."); }
+  finally { typingEl.style.display="none"; chatSend.disabled=false; chatInput.focus(); }
+}
+
+chatSend.addEventListener("click", () => sendMessage(chatInput.value));
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput.value); }
+});
+chatInput.addEventListener("input", () => {
+  chatInput.style.height = "auto";
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
+});
+
+// Quick prompt cards
+document.querySelectorAll(".qp-card").forEach(card => {
+  card.addEventListener("click", () => sendMessage(card.dataset.prompt));
+});
+
+// Password toggle (reused from auth pages via script.js)
+</script>
+{% endblock %}

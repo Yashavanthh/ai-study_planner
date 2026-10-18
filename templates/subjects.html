@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Subjects · StudyAI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Manage</p>
+    <h1>Subjects</h1>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <h2 class="card-title">Add a subject</h2>
+    <form method="post">
+      <div class="field">
+        <label for="name">Subject name</label>
+        <input id="name" name="name" type="text" placeholder="e.g. Data Structures" required autofocus>
+      </div>
+      <div class="field">
+        <label for="exam_date">Exam date</label>
+        <input id="exam_date" name="exam_date" type="date" required>
+      </div>
+      <div class="field">
+        <label>Difficulty <span class="label-note">(1 easy – 5 hard)</span></label>
+        <div class="difficulty-picker">
+          {% for i in range(1,6) %}
+          <label class="diff-btn">
+            <input type="radio" name="difficulty" value="{{ i }}" {{ 'checked' if i==3 }}>
+            <span>{{ i }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" name="is_weak">
+        <span>Mark as a weak subject</span>
+      </label>
+      <button type="submit" class="btn-primary btn-block" style="margin-top:20px">Add subject</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Your subjects ({{ subjects|length }})</h2>
+    {% if subjects|length == 0 %}
+    <div class="empty-state">
+      <div class="empty-icon">📚</div>
+      <p>No subjects yet. Add your first one on the left.</p>
+    </div>
+    {% else %}
+    <div class="subject-list">
+      {% for s in subjects %}
+      {% set is_past = s['exam_date'] < today.isoformat() %}
+      {% set total = s['total_topics'] or 0 %}
+      {% set done  = s['completed_topics'] or 0 %}
+      {% set pct   = ((done/total)*100)|round|int if total else 0 %}
+      <div class="subject-row {{ 'is-past' if is_past }}">
+        <a href="{{ url_for('subject_detail', sid=s['id']) }}" class="subject-link">
+          <div class="subject-top">
+            <span class="subject-name">{{ s['name'] }}</span>
+            {% if s['is_weak'] %}<span class="badge badge-weak">Weak</span>{% endif %}
+            {% if is_past %}<span class="badge badge-past">Past</span>{% endif %}
+          </div>
+          <div class="subject-meta">
+            Exam {{ s['exam_date'] }} · Difficulty {{ s['difficulty'] }}/5
+            {% if total %} · {{ pct }}% complete{% else %} · no topics yet{% endif %}
+          </div>
+          {% if total %}
+          <div class="mini-progress">
+            <div class="mini-fill" style="width:{{ pct }}%"></div>
+          </div>
+          {% endif %}
+        </a>
+        <form method="post" action="{{ url_for('delete_subject', sid=s['id']) }}"
+              data-name="{{ s['name'] }}"
+              onsubmit="return confirm('Remove '+this.dataset.name+'?')">
+          <button type="submit" class="btn-ghost-sm">Remove</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

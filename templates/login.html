@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Sign in · StudyAI{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1 class="auth-logo">study<span>AI</span></h1>
+      <p class="auth-tagline">Your AI-powered exam companion</p>
+    </div>
+    <h2>Welcome back</h2>
+    <form method="post" class="auth-form">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus placeholder="your username">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+          <button type="button" class="pwd-toggle" data-target="password">Show</button>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Sign in</button>
+    </form>
+    <p class="auth-switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Create account · StudyAI{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1 class="auth-logo">study<span>AI</span></h1>
+      <p class="auth-tagline">Your AI-powered exam companion</p>
+    </div>
+    <h2>Create your account</h2>
+    <form method="post" class="auth-form">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus placeholder="choose a username">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required placeholder="min 6 characters">
+          <button type="button" class="pwd-toggle" data-target="password">Show</button>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Create account</button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}

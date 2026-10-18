@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}StudyAI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="{{ url_for('index') }}">study<span>AI</span></a>
+  {% if g.user %}
+  <nav class="nav">
+    <a href="{{ url_for('dashboard') }}"    class="{{ 'active' if request.endpoint=='dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('subjects') }}"     class="{{ 'active' if request.endpoint in ['subjects','subject_detail'] }}">Subjects</a>
+    <a href="{{ url_for('notes_overview') }}"class="{{ 'active' if request.endpoint in ['notes_overview','download_note'] }}">Notes</a>
+    <a href="{{ url_for('timetable') }}"    class="{{ 'active' if request.endpoint=='timetable' }}">Timetable</a>
+    <a href="{{ url_for('settings') }}"     class="{{ 'active' if request.endpoint=='settings' }}">Settings</a>
+  </nav>
+  <div class="topbar-user">
+    <span class="user-avatar">{{ g.user['username'][0].upper() }}</span>
+    <span class="user-name">{{ g.user['username'] }}</span>
+    <a href="{{ url_for('logout') }}" class="btn-ghost-sm">Sign out</a>
+  </div>
+  {% endif %}
+</header>
+
+<div class="page-shell">
+  <div class="margin-line"></div>
+  <main class="page-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-stack">
+        {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">
+          <span class="flash-icon">{{ '✓' if cat=='success' else '⚠' }}</span>
+          {{ msg }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
